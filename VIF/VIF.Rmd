@@ -1,0 +1,36 @@
+---
+title: "Calculate variance inflation factors (VIF)"
+author: "Helen Bothwell"
+date: "7 July 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Set working directory & call source code
+```{r}
+setwd("C:/Users/u1069501/Downloads/Modeling SDM paper/Analyses/VIF")
+source("C:/Users/u1069501/Downloads/Modeling SDM paper/Analyses/VIF/HighstatLibV6.R")
+```
+
+### Read in data, select only the top 5 uncorrelated variables, and calculate VIF
+```{r}
+EV <- read.csv("NL_climDat.csv", header=TRUE)
+EV_5 <- EV[,c(3,5,11,16,19)]
+vif.cor <- corvif(EV_5)
+```
+
+### Write output to file
+```{r}
+write.csv(vif.cor, "VIF_corr.csv")
+```
+
+### Run VIF including flow accumulation
+```{r}
+EV <- read.csv("NL_climDat_wFlowAccum.csv", header=TRUE)
+EV_5_FA <- EV[,c(3,5,11,16,19,21)]
+vif.cor <- corvif(EV_5_FA)
+```
+
