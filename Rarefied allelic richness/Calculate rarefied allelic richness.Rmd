@@ -1,0 +1,54 @@
+---
+title: "Calculate rarefied allelic richness"
+author: "Helen Bothwell"
+date: "29 June 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### Calculate rarefied allelic richness per locus per population
+```{r}
+library(hierfstat)
+
+setwd("C:/Analyses/Rarefied allelic richness/data")
+
+data <- read.csv("NL_MSAT_750_noBWR_hierfstat.csv")
+data <- data[,-2]
+
+Ar <- allelic.richness(data, diploid=TRUE)
+Ar <- Ar$Ar
+Ar <- as.data.frame(Ar)
+
+colnames(Ar)[1] <- "Pop1"
+colnames(Ar)[2] <- "Pop2"
+colnames(Ar)[3] <- "Pop3"
+colnames(Ar)[4] <- "Pop4"
+colnames(Ar)[5] <- "Pop5"
+colnames(Ar)[6] <- "Pop6"
+
+Ar
+```
+
+
+### Calculate mean rarefied allelic richness per population 
+```{r}
+means <- colMeans(Ar)
+means <- as.data.frame(means)
+colnames(means) <- "Mean"
+means <- t(means)
+rbind(Ar, means)
+```
+
+
+### R package citation
+```{r}
+citation("hierfstat")
+```
+
+
+
+
