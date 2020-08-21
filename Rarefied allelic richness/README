@@ -1,0 +1,1 @@
+This code used the 'hierfstat' R package to calculate rarefied allelic richness.  The example data is Populus angustifolia MSATs, with diploid alleles concatenated for each locus.
