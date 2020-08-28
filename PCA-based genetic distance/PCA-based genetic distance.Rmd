@@ -1,0 +1,51 @@
+---
+title: "PCA-based genetic distance"
+author: "Helen Bothwell"
+date: "28 August 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This code calculates pairwise genetic distance among individuals using the principal component analysis-based method of Shirk et al. (2010). Genetic data (e.g., MSAT allele calls used here) are first converted into a matrix of individual allele frequencies using the 'import2genind' function in the ADEGENET package (Jombart 2008, Jombart & Ahmed 2011). PCA eigenvectors are then derived from the allele frequency data, and pairwise genetic distance then calculated based on the distance among individuals along the first or multiple significant eigenvectors ('distance' function in ECODIST package (Goslee & Urban 2007)).
+
+### INPUT DATA FILE PARAMETERS
+The first column of the raw data input file contains individual sample IDs. The second column may contain population identifiers (optional). Genetic data are entered in subsequent columns, with alleles for each diploid locus occupying two consecutive columns. Allelic data for a given sample are entered in a single row following the sample ID. The ADEGENET package accepts GENEPOP, STRUCTURE, GENETIX, or FSTAT file formats. We used the Export Data function in GenAlEx 6.5 (Peakall and Smouse 2012) to convert our input .csv file to STRUCTURE format; the output file must then be appended with ".str".
+
+### Set working directory and load libraries
+```{r}
+setwd("C:/Path/to/mydata")
+library(ecodist)
+library(adegenet)
+```
+
+### Convert microsatellite (MSAT) data into a matrix of allele frequencies
+```{r}
+alleles <- import2genind("data/NL_MSAT.str",quiet=T)@tab
+write.csv(alleles,"alleles.csv")
+```
+
+### Generate PCA-based pairwise genetic distance matrix
+```{r}
+pca <- princomp(alleles,cor=F)
+pca_1 <- predict(pca)[,1] # Eigenvector of the first pc axis
+pca_1dist <- distance(pca_1, method="euclidean")
+GD <- as.dist(pca_1dist)
+GD.mat <- as.matrix(GD)
+```
+
+### Label and export PCA-based genetic distance matrix
+```{r}
+data <- read.csv("data/NL_MSAT.csv")
+rownames(GD.mat) <- colnames(GD.mat) <- as.character(data[,1])
+write.csv(GD.mat,"PCA_GD.csv")
+```
+
+### R package citations
+```{r}
+citation("ecodist")
+citation("adegenet")
+```
+
