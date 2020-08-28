@@ -1,0 +1,78 @@
+---
+title: "Random weighted sample"
+author: "Helen Bothwell"
+date: "28 August 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This code generates a random sample of points weighted by probability of habitat suitability. This code can also be used to generate a sample weighted by population density or other metric of interest. Code adapted from John Baumgartner (John.Baumgartner@mq.edu.au).
+
+### Set working directory and load libraries
+```{r}
+setwd("C:/Path/to/my/data")
+library(raster)
+library(rgdal)
+```
+
+### Read in raster of probability of habitat suitability, population density, etc.
+```{r}
+r <- raster("Prob_Raster")
+summary(r)
+r
+plot(r)
+```
+
+### Alternatively, you can generate a dummy raster. For example, a 10,000 x 100 matrix of random, uniform numbers between 0 and 1000.
+```{r}
+r <- raster(matrix(runif(1000000, 0, 1000), ncol=100))
+```
+
+### Change any NA values to zero. (This does not alter the original raster.)
+```{r}
+pr <- values(r)  #Extract values from all cells of r, and assign this vector of values to pr.
+pr[is.na(pr)] <- 0  #Change NAs to zeroes.
+```
+
+### Take a random sample of n raster cells, weighted by probability of habitat suitability, population density, etc. (i.e. weighted by the values of the raster). seq_len(ncell(r)) produces a vector of the integers from 1 to the number of cells of r, where the probability weights of each of those numbers is equal to the values of pr.
+```{r}
+n <- 2500  #Define random, probability-weighted sample size.
+cells <- sample(x=seq_len(ncell(r)), size=n, prob=pr)
+```
+
+### Create data.frame with a single column ('Habitat.Prob') containing just the probability of habitat suitability for selected cells. values(r)[cells] subsets the vector of probabilities, values(r), to just those values that correspond to the sampled cells.
+```{r}
+d <- data.frame(Habitat.Prob=values(r)[cells])
+```
+
+### Extract latitude and longitude of the chosen cells and return as a SpatialPoints object. The xyFromCell function identifies the cell-center coordinates for sampled cells of a raster object (in this case r, our raster of probability of habitat suitability). Setting spatial=TRUE returns the object as a SpatialPoints object, which facilitates writing out to a shapefile.
+```{r}
+coords <- xyFromCell(r, cells, spatial=TRUE)
+```
+
+### Combine coords with data to create SpatialPointsDataFrame object
+Projection parameters reference: https://trac.osgeo.org/proj/wiki/GenParms
+Find appropriate proj4 string: www.spatialreference.org
+proj = Projection name (equidistant conic in this example)
+lat_0 = Latitude of origin
+lon_0 = Central meridian
+lat_1 = Standard parallel 1
+lat_2 = Standard parallel 2
+x_0 = False easting
+y_0 = False northing
+ellps = Spheroid (GRS_1980)
+no_defs = Don't use the /usr/share/proj/proj_def.dat defaults file (default of UTM Zone 10
+NAD83 used if no_defs isn't specified)
+```{r}
+pts <- SpatialPointsDataFrame(coords, d, proj4string=CRS("+proj=eqdc +lat_0=39 +lon_0=- 107.7 +lat_1=33 +lat_2=45 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs"))
+plot(pts)
+```
+
+### Write to ESRI shapefile (requires rgdal package)
+```{r}
+writeOGR(pts, '.', 'Pts_prob_weighted', 'ESRI Shapefile')
+```
+
