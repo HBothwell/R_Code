@@ -1,0 +1,1 @@
+This code generates a random sample of points weighted by probability of habitat suitability. This code can also be used to generate a sample weighted by population density or other metric of interest. Code adapted from John Baumgartner (John.Baumgartner@mq.edu.au).
