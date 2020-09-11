@@ -1,0 +1,252 @@
+---
+title: "PCA of sampes in environmental space"
+author: "Helen Bothwell"
+date: "10 September 2020"
+output: html_document
+---
+
+This code runs a principal component analysis to extract sample loadings along PC axes in multivariate environmental space. Environmental data include elevation, edaphic, bioclimatic, and topographic variables. Datasets include 257 Eucalyptus melliodora and 157 Eucalyptus sideroxylon from the Euc Landscape Genomic WGS Project.
+
+### Call libraries and set working directory
+```{r, message=FALSE}
+library(psych)
+library(vegan)
+library(GPArotation)
+library(rgl)
+library(reshape2)
+library(ggplot2)
+setwd("C:/Users/u1069501/Documents/GIS/Eucalyptus_GIS/Environmental_data_analyses/PCA_WGS")
+```
+
+### Read in data for E. melliodora
+```{r, results="hide"}
+Data <- read.csv("HMBEmel_257_WGS_env.csv")
+climate <- Data[,c(6:33)]
+summary(climate)
+str(climate)
+Sample <- Data[c(2)]
+```
+
+### Generate environmental correlation matrix 
+```{r}
+cor_bioclim <- cor(climate)
+write.csv(cor_bioclim,"Emel_cor_bioclim.csv")
+```
+
+### Plot correlation heat map
+##### Use correlation between variables as distance to reorder the correlation matrix
+```{r}
+reorder_cormat <- function(cormat){
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+cor_bioclim <- reorder_cormat(cor_bioclim)
+```
+##### Round correlation values to 2 decimal places
+```{r}
+cor_bioclim <- round(cor_bioclim, digits=2)
+```
+##### Extract only the upper triangle
+```{r}
+get_upper_tri <- function(cor_bioclim){
+  cor_bioclim[lower.tri(cor_bioclim)] <- NA
+  return(cor_bioclim)
+}
+upper_tri <- get_upper_tri(cor_bioclim)
+```
+##### Melt the correlation matrix
+```{r}
+melted_cor_bioclim <- melt(upper_tri, na.rm=TRUE)
+```
+##### Create a ggheatmap
+```{r}
+ggheatmap <- ggplot(melted_cor_bioclim, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 8, hjust = 1))+
+ coord_fixed()
+print(ggheatmap)
+```
+
+##### Add correlation coefficients
+```{r}
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 1.5) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+```
+
+
+### Standardize climate data: z = (x - mean)/s.d.
+```{r}
+z.scores=vector()
+for (i in 1:28){
+x=climate[,i]
+z.i=(x-mean(x))/sd(x)
+z.scores=cbind(z.scores,z.i)
+}
+```
+
+### Run Principal Component Analysis & plot PCA
+```{r, results="hide"}
+Fclimate<-principal(z.scores, nfactors=10, rotate="varimax", scores=T)
+summary(Fclimate)
+Fclimate$scores  
+Fclimate$values
+```
+```{r}
+Fclimate
+plot(Fclimate$values)
+Fclimate.biplot <- envfit(Fclimate$scores, env=Sample)
+Sample_loadings <- Fclimate.biplot$factors[1]
+write.csv(Sample_loadings, "Emel_Sample loadings.csv")
+plot(Fclimate$scores)
+```
+
+### Plot eigenvectors in 3D
+```{r}
+plot3d(Fclimate$scores,type='s')
+```
+
+### Identify environmental correlations with PC axes
+```{r}
+PC_cor <- cor(Fclimate$scores, climate)
+PC_cor
+write.csv(PC_cor, "Esid_Environmental correlations w PC axes.csv")
+```
+
+
+### Read in data for E. sideroxylon
+```{r, results="hide"}
+Data <- read.csv("HMBEsid_157_WGS_env.csv")
+climate <- Data[,c(6:33)]
+summary(climate)
+str(climate)
+Sample <- Data[c(2)]
+```
+
+### Generate environmental correlation matrix
+```{r}
+cor_bioclim <- cor(climate)
+write.csv(cor_bioclim,"Esid_cor_bioclim.csv")
+```
+
+### Plot correlation heat map
+##### Use correlation between variables as distance to reorder the correlation matrix
+```{r}
+reorder_cormat <- function(cormat){
+dd <- as.dist((1-cormat)/2)
+hc <- hclust(dd)
+cormat <-cormat[hc$order, hc$order]
+}
+cor_bioclim <- reorder_cormat(cor_bioclim)
+```
+##### Round correlation values to 2 decimal places
+```{r}
+cor_bioclim <- round(cor_bioclim, digits=2)
+```
+##### Extract only the upper triangle
+```{r}
+get_upper_tri <- function(cor_bioclim){
+  cor_bioclim[lower.tri(cor_bioclim)] <- NA
+  return(cor_bioclim)
+}
+upper_tri <- get_upper_tri(cor_bioclim)
+```
+##### Melt the correlation matrix
+```{r}
+melted_cor_bioclim <- melt(upper_tri, na.rm=TRUE)
+```
+##### Create a ggheatmap
+```{r}
+ggheatmap <- ggplot(melted_cor_bioclim, aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+    name="Pearson\nCorrelation") +
+  theme_minimal()+ # minimal theme
+ theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+    size = 8, hjust = 1))+
+ coord_fixed()
+print(ggheatmap)
+```
+
+##### Add correlation coefficients
+```{r}
+ggheatmap + 
+geom_text(aes(Var2, Var1, label = value), color = "black", size = 1.5) +
+theme(
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  panel.grid.major = element_blank(),
+  panel.border = element_blank(),
+  panel.background = element_blank(),
+  axis.ticks = element_blank(),
+  legend.justification = c(1, 0),
+  legend.position = c(0.6, 0.7),
+  legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                title.position = "top", title.hjust = 0.5))
+```
+
+
+### Standardize climate data: z = (x - mean)/s.d.
+```{r}
+z.scores=vector()
+for (i in 1:28){
+x=climate[,i]
+z.i=(x-mean(x))/sd(x)
+z.scores=cbind(z.scores,z.i)
+}
+```
+
+### Run Principal Component Analysis & plot PCA
+```{r, results="hide"}
+Fclimate<-principal(z.scores, nfactors=10, rotate="varimax", scores=T)
+summary(Fclimate)
+Fclimate$scores  
+Fclimate$values
+```
+```{r}
+Fclimate
+plot(Fclimate$values)
+Fclimate.biplot <- envfit(Fclimate$scores, env=Sample)
+Sample_loadings <- Fclimate.biplot$factors[1]
+write.csv(Sample_loadings, "Esid_Sample loadings.csv")
+plot(Fclimate$scores)
+```
+
+### Plot eigenvectors in 3D
+```{r}
+plot3d(Fclimate$scores,type='s')
+```
+
+### Identify environmental correlations with PC axes
+```{r}
+PC_cor <- cor(Fclimate$scores, climate)
+PC_cor
+write.csv(PC_cor, "Esid_Environmental correlations w PC axes.csv")
+```
+
+
+### Session Information
+```{r}
+options(width=100)
+devtools::session_info()
+```
+
