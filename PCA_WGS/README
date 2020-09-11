@@ -1,1 +1,1 @@
-
+This code runs a principal component analysis to extract sample loadings along PC axes in multivariate environmental space. Environmental data include elevation, edaphic, bioclimatic, and topographic variables. Datasets include 257 Eucalyptus melliodora and 157 Eucalyptus sideroxylon from the Euc Landscape Genomic WGS Project.
