@@ -1,0 +1,189 @@
+---
+title: "PCA climate niche differentiation by pop"
+author: "Helen Bothwell"
+date: "3 November 2020"
+output: html_document
+---
+
+This code plots population genetic groups in multivariate climate space using principal component analysis (PCA). The hypothesis that populations are significantly differentiated in climate space is then tested using perMANOVA.
+
+### Call libraries and set working directory
+```{r, message=FALSE}
+library(psych)
+library(vegan)
+setwd("C:/Users/u1069501/Downloads/Modeling SDM paper/Analyses/PCA of genetic clusters in climate space")
+```
+
+### Read in data and define variables
+```{r}
+Data <- read.csv("NL_bioclim_top5_7popsFinal.csv")                           
+head(Data)
+climate <- Data[,c(3:7)]
+summary(climate)
+boxplot(climate,main="Boxplot of Bioclimatic Variables",xlab="Bioclimatic Variables")
+
+population <- Data[c(8)]
+site <- Data[c(2)]
+Sample_ID <- Data[c(1)]
+```
+
+### Assess covariance and correlation between climate variables
+```{r}
+cov(climate)
+cor_bioclim <- cor(climate)
+write.csv(cor_bioclim,"cor_bioclim.csv")
+```
+
+### Standardize climate variables: z = (x - mean)/s.d.
+```{r}
+z.scores=vector()
+for (i in 1:5){  #i in 1:nbioclim
+x=climate[,i]
+z.i=(x-mean(x))/sd(x)
+z.scores=cbind(z.scores,z.i)
+}
+colnames(z.scores) <- c("TDiurnRng","TSeas","AveTWrmQtr","PSeas","PWrmQtr")
+head(z.scores)
+boxplot(z.scores,main="Boxplot of Normalized Bioclimatic Variables",xlab="Bioclimatic Variables",ylab="Z.Score")
+```
+
+### Run PCA, extract eigenvectors, eigenvalues, generate scree plot of PC contributions
+```{r}
+Fclimate <- principal(z.scores, nfactors=5, rotate="varimax", scores=T)
+summary(Fclimate)
+Fclimate
+head(Fclimate$scores)  #Eigenvectors
+Fclimate$values  #Eigenvalues
+plot(Fclimate$values)
+Eigenvalue <- Fclimate$values
+plot(Eigenvalue,xlab="Principal Component",main="Scree Plot")
+```
+
+### Calculate % variance explained by PC axes
+```{r}
+percentagePC1=2.4910245/(2.4910245 + 1.0156676 + 0.9906276 + 0.4003561 + 0.1023242)
+percentagePC1
+percentagePC2=1.0156676/(2.4910245 + 1.0156676 + 0.9906276 + 0.4003561 + 0.1023242)
+percentagePC2
+percentagePC3=0.9906276/(2.4910245 + 1.0156676 + 0.9906276 + 0.4003561 + 0.1023242)
+percentagePC3
+percentagePC4=0.4003561/(2.4910245 + 1.0156676 + 0.9906276 + 0.4003561 + 0.1023242)
+percentagePC4
+percentagePC5=0.1023242/(2.4910245 + 1.0156676 + 0.9906276 + 0.4003561 + 0.1023242)
+percentagePC5
+PC1.PC2=percentagePC1+percentagePC2
+PC1.PC2
+PC1.PC2.PC3=percentagePC1+percentagePC2+percentagePC3
+PC1.PC2.PC3
+```
+
+### Fit vector of sampling location centroids, plot in climate ordination space, and test site goodness of fit
+```{r}
+Fclimate.biplot <- envfit(Fclimate$scores, env=site) 
+Fclimate.biplot
+plot(Fclimate$scores)
+plot(Fclimate.biplot)  #Add site ID labels
+```
+
+### Fit vector of sampling location centroids, plot in climate ordination space, and test population goodness of fit
+```{r}
+pop <- factor(population[,1])  
+Fclimate.biplot <- envfit(Fclimate$scores,env=pop)
+Fclimate.biplot
+plot(Fclimate$scores)
+plot(Fclimate.biplot)
+```
+
+### Run ANOVAs on the first PCs for site and population
+```{r}
+summary(aov(Fclimate$scores[,1] ~ factor(site[,1])))  
+summary(aov(Fclimate$scores[,1] ~ factor(population[,1])))  
+```
+
+### 3D PCA Plot 
+```{r}
+library(rgl)
+cols <- c('#5729CE','#CC33CC','#60DD49','#3F9B0B','#0074E7','aquamarine1','#FF9900')[as.numeric(factor(population[,1]),rotate="varimax")]
+PCA_3D <- plot3d(Fclimate$scores,type='s',col=cols)
+plot3d(Fclimate$scores,xlab="Precipitation Seasonality",ylab="Temperature Seasonality",zlab="Diurnal Temp. Range", type='s',col=cols)
+```
+
+### Save 3D image to .png file (file name must start with a letter - 3D_PCA gives error message)
+```{r}
+PCA_3D <- paste("pic",formatC(i,digits=1,flag="0"),".png",sep="")
+rgl.snapshot(PCA_3D, fmt = "png", top = TRUE) #Same result as: rgl.snapshot(PCA_3D)
+```
+
+### PCA Plots w/ SE or SD ellipses 
+```{r}
+library(RColorBrewer)
+display.brewer.all()
+palette()  #Show what colors are being used by default
+#http://mkweb.bcgsc.ca/colornames/
+plot(Fclimate$scores,xlab="PC2 (20.3%)",ylab="PC1 (49.8%)",
+     col=c('#5729CE','#CC33CC','#60DD49','#3F9B0B','#0074E7','aquamarine1','#FF9900')[as.numeric(factor(population[,1]),
+     rotate="varimax")],pch=19)
+```
+
+### 1) Make points transparent, 2) Add standard error ellipses (smaller than SD below), 3)  Overlay climate vectors, 4) Add legend
+```{r}
+library(scales)
+cols <- c('#5729CE','#CC33CC','#60DD49','#3F9B0B','#0074E7','aquamarine1','#FF9900')[as.numeric(factor(population[,1]), rotate="varimax")]
+plot(Fclimate$scores,xlab="PC2 (20.3%)",ylab="PC1 (49.8%)",
+     col=alpha(cols,0.4), pch=19, cex=1.5)  #alpha 0.4 = 40% opacity
+
+ordiellipse(Fclimate$scores[population[,1] == '1',],factor(population[population[,1] == '1',1]),col='#5729CE')
+ordiellipse(Fclimate$scores[population[,1] == '2',],factor(population[population[,1] == '2',1]),col='#CC00CC')
+ordiellipse(Fclimate$scores[population[,1] == '3',],factor(population[population[,1] == '3',1]),col='#60DD49')
+ordiellipse(Fclimate$scores[population[,1] == '4',],factor(population[population[,1] == '4',1]),col='#3F9B0B')
+ordiellipse(Fclimate$scores[population[,1] == '5',],factor(population[population[,1] == '5',1]),col='#0074E7')
+ordiellipse(Fclimate$scores[population[,1] == '6',],factor(population[population[,1] == '6',1]),col='aquamarine1')
+ordiellipse(Fclimate$scores[population[,1] == '7',],factor(population[population[,1] == '7',1]),col='#FF9900')
+
+fit <- envfit(Fclimate,climate,perm=999)
+fit  #scores(fit, "vectors") #does same as "fit"
+plot(fit, p.max = 0.05, col = "black",cex=1, pos=3)  #p.max displays only vectors significant at p < 0.05
+
+legend("topleft", bty='n',
+    legend=c("Arizona","New Mexico","Eastern Rocky Mnts","Western Colorado","Nevada & Central Utah","Idaho, W Wyoming, & N Utah","Montana & Alberta"),
+    cex=0.8, col=alpha(c('#5729CE','#CC33CC','#60DD49','#3F9B0B','#0074E7','aquamarine1','#FF9900'),0.4), pch=19)
+```
+
+### Plot PCA w/ standard deviation ellipses of pts. w/ 95% condfidence limit (larger ellipses than SE)
+```{r}
+plot(Fclimate$scores,xlab="PC2 (20.3%)",ylab="PC1 (49.8%)",
+     col=alpha(cols,0.4), pch=19, cex=1.5)
+ordiellipse(Fclimate$scores[population[,1] == '1',],factor(population[population[,1] == '1',1]),kind="sd",conf=0.95,col='#5729CE')
+ordiellipse(Fclimate$scores[population[,1] == '2',],factor(population[population[,1] == '2',1]),kind="sd",conf=0.95,col='#CC00CC')
+ordiellipse(Fclimate$scores[population[,1] == '3',],factor(population[population[,1] == '3',1]),kind="sd",conf=0.95,col='#60DD49')
+ordiellipse(Fclimate$scores[population[,1] == '4',],factor(population[population[,1] == '4',1]),kind="sd",conf=0.95,col='#3F9B0B')
+ordiellipse(Fclimate$scores[population[,1] == '5',],factor(population[population[,1] == '5',1]),kind="sd",conf=0.95,col='#0074E7')
+ordiellipse(Fclimate$scores[population[,1] == '6',],factor(population[population[,1] == '6',1]),kind="sd",conf=0.95,col='aquamarine1')
+ordiellipse(Fclimate$scores[population[,1] == '7',],factor(population[population[,1] == '7',1]),kind="sd",conf=0.95,col='#FF9900')
+```
+
+### PCA spider plots
+```{r}
+plot(Fclimate$scores,main="PCA Spider Plot of Climate Niche by Population",xlab="PC2 (20.3%)",ylab="PC1 (49.8%)", col=alpha(cols,0.4), pch=19)
+ordispider(Fclimate$scores[population[,1] == '1',],factor(population[population[,1] == '1',1]),col='#5729CE')
+ordispider(Fclimate$scores[population[,1] == '2',],factor(population[population[,1] == '2',1]),col='#CC00CC')
+ordispider(Fclimate$scores[population[,1] == '3',],factor(population[population[,1] == '3',1]),col='#60DD49')
+ordispider(Fclimate$scores[population[,1] == '4',],factor(population[population[,1] == '4',1]),col='#3F9B0B')
+ordispider(Fclimate$scores[population[,1] == '5',],factor(population[population[,1] == '5',1]),col='#0074E7')
+ordispider(Fclimate$scores[population[,1] == '6',],factor(population[population[,1] == '6',1]),col='aquamarine1')
+ordispider(Fclimate$scores[population[,1] == '7',],factor(population[population[,1] == '7',1]),col='#FF9900')
+plot(fit, p.max = 0.05, col = "black",cex=1)
+```
+
+### Run perManova: Is the population binning process a good predictor of climate grouping? 
+### Significant: Genetic population binning process is a good predictor of climate niche.
+```{r}
+pop <- factor(population[,1])  
+adonis(climate ~ pop, permutations = 999, method="euc", strata=NULL) 
+```
+
+### Session Information
+```{r}
+options(width=100)
+devtools::session_info()
+```
