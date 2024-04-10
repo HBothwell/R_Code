@@ -27,12 +27,22 @@ alleles <- import2genind("data/NL_MSAT.str",quiet=T)@tab
 write.csv(alleles,"alleles.csv")
 ```
 
-### Generate PCA-based pairwise genetic distance matrix
+### Generate PCA-based pairwise genetic distance matrix using only the first eigenvector
 ```{r}
 pca <- princomp(alleles,cor=F)
 pca_1 <- predict(pca)[,1] # Eigenvector of the first pc axis
-pca_1dist <- distance(pca_1, method="euclidean")
-GD <- as.dist(pca_1dist)
+pca_dist1 <- distance(pca_1, method="euclidean")
+GD <- as.dist(pca_dist1)
+GD.mat <- as.matrix(GD)
+```
+
+### Alternatively, Shirk et al. 2017 found that using more pc axes increased accuracy of model selection when attempting to identify the correct landscape resistance model among competing models. The following code generates a PCA-based pairwise genetic distance matrix using the first 30 eigenvectors.
+```{r}
+pca <- princomp(alleles,cor=F)
+pca$scores  # Eigenvectors
+pca_30 <- pca$scores[,1:30]
+pca_dist30 <- distance(pca_30, method="euclidean")
+GD <- as.dist(pca_dist30)
 GD.mat <- as.matrix(GD)
 ```
 
